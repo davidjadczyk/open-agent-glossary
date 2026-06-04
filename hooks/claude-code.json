@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "UserPrompt": [
+      {
+        "matcher": ".*",
+        "command": "npx open-agent-glossary inject --prompt \"$USER_PROMPT\""
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "term": "EPER",
+    "definition": "Empresa de Pequeño Porte — a Brazilian business classification for companies with annual revenue between R$360k and R$4.8M.",
+    "aliases": ["EPP", "Empresa de Pequeño Porte"]
+  },
+  {
+    "term": "DRY",
+    "definition": "Don't Repeat Yourself — a principle of software development aimed at reducing repetition of information.",
+    "aliases": ["dont repeat yourself"]
+  },
+  {
+    "term": "SRP",
+    "definition": "Single Responsibility Principle — every module or class should have responsibility over a single part of functionality.",
+    "aliases": ["single responsibility"]
+  }
+]

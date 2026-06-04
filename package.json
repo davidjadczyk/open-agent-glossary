@@ -1,0 +1,48 @@
+{
+  "name": "open-agent-glossary",
+  "version": "0.1.0",
+  "description": "Tool-agnostic glossary management for coding agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "open-agent-glossary": "./bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup && tsup src/adapters/pi/index.ts --format esm --outDir src/adapters/pi/dist --no-splitting --target node20 --external @some-scope/pi-coding-agent",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "glossary",
+    "agent",
+    "mcp",
+    "coding-agent",
+    "context-injection"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0",
+    "@types/node": "^22.0.0"
+  }
+}

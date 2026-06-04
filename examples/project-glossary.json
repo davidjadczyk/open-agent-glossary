@@ -1,0 +1,12 @@
+[
+  {
+    "term": "Feature Flag",
+    "definition": "A technique to enable or disable functionality at runtime without deploying new code. In this project, managed via LaunchDarkly.",
+    "aliases": ["FF", "feature toggle"]
+  },
+  {
+    "term": "BFF",
+    "definition": "Backend for Frontend — a dedicated backend service tailored to the needs of a specific frontend application.",
+    "aliases": ["backend for frontend"]
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "name": "open-agent-glossary-pi-adapter",
+  "version": "0.1.0",
+  "description": "Pi extension adapter for open-agent-glossary",
+  "type": "module",
+  "extensions": ["./dist/index.js"]
+}
