@@ -1,6 +1,6 @@
 {
   "name": "open-agent-glossary",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tool-agnostic glossary management for coding agents",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,17 +27,24 @@
     "agent",
     "mcp",
     "coding-agent",
-    "context-injection"
+    "context-injection",
+    "pi-package"
   ],
   "license": "MIT",
   "files": [
     "dist",
     "bin",
-    "README.md"
+    "README.md",
+    "src/adapters/pi/dist"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "commander": "^13.1.0"
+  },
+  "pi": {
+    "extensions": [
+      "./src/adapters/pi/dist/index.js"
+    ]
   },
   "devDependencies": {
     "tsup": "^8.4.0",
