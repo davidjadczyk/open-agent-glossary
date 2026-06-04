@@ -11,6 +11,40 @@ Define domain terms once in a `glossary.json` or `glossary.jsonl` file and use t
 
 The goal is **fast setup** and **one shared source of truth**.
 
+```mermaid
+graph TD
+    %% Core glossary file source
+    subgraph Files [Shared Source of Truth]
+        A[(.agents/glossary.jsonl)] --- B[(~/.agents/glossary.json)]
+    end
+
+    %% Package engine
+    subgraph Package [open-agent-glossary Core]
+        Engine[Loader & Matcher Engine]
+    end
+
+    %% Connect files to engine
+    Files -->|layered merge| Engine
+
+    %% Output integrations
+    subgraph Integrations [Agent Interfaces]
+        Pi[Pi Extension]
+        CC[Claude Code Hook]
+        Copilot[GitHub Copilot]
+        MCP[Any MCP Client]
+    end
+
+    %% Connection paths
+    Engine -->|Highlighter / Inline Tool| Pi
+    Engine -->|Prompt Injector CLI| CC
+    Engine -->|Stdio Transport| MCP
+    MCP -->|Proactive Lookup| Copilot
+    
+    style Files fill:#f9f,stroke:#333,stroke-width:2px
+    style Package fill:#bbf,stroke:#333,stroke-width:2px
+    style Integrations fill:#dfd,stroke:#333,stroke-width:1px
+```
+
 ---
 
 ## Why this package exists
