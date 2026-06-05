@@ -117,7 +117,8 @@ Glossaries are **layered and merged**. Later tiers win on the same `term`.
   "glossaryPin": "",
   "extraGlossaryPaths": [],
   "disableGlobalGlossary": false,
-  "disableProjectGlossary": false
+  "disableProjectGlossary": false,
+  "ui": { "autostart": false, "port": 7337, "open": true }
 }
 ```
 
@@ -129,6 +130,9 @@ Glossaries are **layered and merged**. Later tiers win on the same `term`.
 | `extraGlossaryPaths` | `[]` | Extra paths appended after all built-in tiers |
 | `disableGlobalGlossary` | `false` | Skip all global user-level tiers (useful in CI) |
 | `disableProjectGlossary` | `false` | Skip all project-level tiers |
+| `ui.autostart` | `false` | Start the local UI control server when a session starts |
+| `ui.port` | `7337` | Control server port |
+| `ui.open` | `true` | Open the browser when the UI starts |
 
 ### Glossary Modes
 
@@ -166,6 +170,36 @@ Use this in mono-repos where a specific shared glossary file must always be used
 |---|---|
 | `/glossary` | Show loaded glossary status and sources |
 | `/glossary reload` | Reload glossary files without restarting Pi |
+
+---
+
+## Local UI
+
+A local web UI (dashboard, entries manager, usage charts) is served by an
+embedded hono control server bound to `127.0.0.1` only.
+
+| Command | Description |
+|---|---|
+| `open-agent-glossary ui` | Start the control server + UI and open the browser |
+| `open-agent-glossary mcp-serve --ui` | Run the UI alongside the MCP server |
+
+Set `ui.autostart: true` in config to boot it automatically on session start.
+
+Global state lives under `~/.open-agent-glossary/`:
+
+| File | Purpose |
+|---|---|
+| `usages.json` | Usage tracking (per-term / per-session / global totals) |
+| `projects.json` | Registry of project roots (powers "glossaries on this computer") |
+
+### UI troubleshooting
+
+- **Port already in use** — pass `--port <n>` or set `ui.port` in config.
+- **"UI not installed"** — install the prebuilt UI package
+  (`npm i -g open-agent-glossary-ui`) or run `npx open-agent-glossary-ui`. The
+  JSON API under `/api` still works without it.
+- **UI did not autostart** — confirm `ui.autostart` is `true` in a config file
+  the project resolves (see Config File Locations).
 
 ---
 

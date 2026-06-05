@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import type { GlossaryConfig } from "./types.js";
@@ -51,6 +51,8 @@ export function loadConfig(cwd?: string): Required<GlossaryConfig> {
           ...parsed,
           // ensure arrays are always arrays even if partially specified
           extraGlossaryPaths: parsed.extraGlossaryPaths ?? DEFAULT_CONFIG.extraGlossaryPaths,
+          // deep-merge nested ui object so partial config keeps defaults
+          ui: { ...DEFAULT_CONFIG.ui, ...(parsed.ui ?? {}) },
         };
       } catch {
         // Invalid JSON — fall through to next path
@@ -68,4 +70,95 @@ export function loadConfig(cwd?: string): Required<GlossaryConfig> {
 export function resolveExtraPaths(paths: string[], cwd?: string): string[] {
   const base = cwd ?? process.cwd();
   return paths.map((p) => (p.startsWith("/") ? p : resolve(base, p)));
+}
+
+export interface ConfigPathState {
+  path: string;
+  exists: boolean;
+  used: boolean; // the first-found file that wins
+  shadowed: boolean; // exists but a higher-priority file already won
+}
+
+export interface ConfigProvenance {
+  config: Required<GlossaryConfig>;
+  /** Per-top-level-field origin: the winning file path, or "default". */
+  origins: Record<string, string>;
+  /** Full candidate stack with found/shadowed/used flags (priority order). */
+  stack: ConfigPathState[];
+  /** The file the active config came from, or null when all defaults. */
+  activeFile: string | null;
+}
+
+/**
+ * Resolve config with provenance: which candidate files exist, which one wins,
+ * and where each effective field value came from. Config resolution is
+ * first-found-wins (whole file), so per-field origin is "winning file when the
+ * key is present there, else default".
+ */
+export function resolveConfigWithProvenance(cwd?: string): ConfigProvenance {
+  const paths = configPaths(cwd);
+  let activeFile: string | null = null;
+  let parsed: GlossaryConfig = {};
+
+  const stack: ConfigPathState[] = paths.map((p) => ({
+    path: p,
+    exists: existsSync(p),
+    used: false,
+    shadowed: false,
+  }));
+
+  for (const entry of stack) {
+    if (!entry.exists) continue;
+    if (activeFile === null) {
+      try {
+        parsed = JSON.parse(readFileSync(entry.path, "utf-8")) as GlossaryConfig;
+        entry.used = true;
+        activeFile = entry.path;
+      } catch {
+        // Invalid JSON — treat as not usable, continue to next candidate.
+      }
+    } else {
+      entry.shadowed = true;
+    }
+  }
+
+  const config: Required<GlossaryConfig> = {
+    ...DEFAULT_CONFIG,
+    ...parsed,
+    extraGlossaryPaths: parsed.extraGlossaryPaths ?? DEFAULT_CONFIG.extraGlossaryPaths,
+    ui: { ...DEFAULT_CONFIG.ui, ...(parsed.ui ?? {}) },
+  };
+
+  const origins: Record<string, string> = {};
+  for (const key of Object.keys(DEFAULT_CONFIG)) {
+    origins[key] =
+      activeFile && (parsed as Record<string, unknown>)[key] !== undefined
+        ? activeFile
+        : "default";
+  }
+
+  return { config, origins, stack, activeFile };
+}
+
+/**
+ * Write config to an EXISTING config file only (never creates new files).
+ * Validates basic coherence before writing. Returns the written path.
+ */
+export function writeConfigFile(
+  filePath: string,
+  next: GlossaryConfig
+): string {
+  if (!existsSync(filePath)) {
+    throw new Error(
+      `Config file does not exist: ${filePath}. Create it manually first.`
+    );
+  }
+  if (next.glossaryMode === "pin" && !next.glossaryPin) {
+    throw new Error("glossaryMode 'pin' requires a glossaryPin path.");
+  }
+  if (next.ui?.port !== undefined && (next.ui.port < 1 || next.ui.port > 65535)) {
+    throw new Error("ui.port must be between 1 and 65535.");
+  }
+  writeFileSync(filePath, JSON.stringify(next, null, 2) + "\n", "utf-8");
+  return filePath;
 }

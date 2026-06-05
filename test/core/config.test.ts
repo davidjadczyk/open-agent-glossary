@@ -99,6 +99,17 @@ describe("config", () => {
     expect(config.sessionTtlMinutes).toBe(30);
   });
 
+  it("deep-merges partial ui config with defaults", () => {
+    writeFileSync(
+      join(TEST_DIR, ".open-agent-glossary", "config.json"),
+      JSON.stringify({ ui: { autostart: true } })
+    );
+    const config = loadConfig(TEST_DIR);
+    expect(config.ui.autostart).toBe(true);
+    expect(config.ui.port).toBe(7337);
+    expect(config.ui.open).toBe(true);
+  });
+
   it("configPaths includes all expected locations", () => {
     const paths = configPaths(TEST_DIR);
     expect(paths.some((p) => p.includes(".open-agent-glossary"))).toBe(true);

@@ -8,6 +8,8 @@ import { removeCommand } from "./remove.js";
 import { listCommand } from "./list.js";
 import { resetSessionCommand } from "./reset-session.js";
 import { mcpServeCommand } from "./mcp-serve.js";
+import { uiCommand } from "./ui.js";
+import { initCommand } from "./init.js";
 
 const program = new Command();
 
@@ -73,6 +75,25 @@ program
 program
   .command("mcp-serve")
   .description("Start MCP server on stdio")
+  .option("--ui", "Also start the local UI control server")
+  .option("--port <n>", "Control server port (with --ui)")
+  .option("--open", "Open the browser (with --ui)")
   .action(mcpServeCommand);
+
+program
+  .command("init")
+  .description("Scaffold a default config and empty glossary in the current directory")
+  .option("--force", "Overwrite existing files")
+  .option("--global", "Write to ~/.open-agent-glossary/ instead of ./.open-agent-glossary/")
+  .option("--cwd <dir>", "Working directory")
+  .action(initCommand);
+
+program
+  .command("ui")
+  .description("Start the local glossary UI (control server + browser)")
+  .option("--port <n>", "Control server port")
+  .option("--no-open", "Do not open the browser")
+  .option("--cwd <dir>", "Working directory")
+  .action(uiCommand);
 
 program.parse();

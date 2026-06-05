@@ -13,6 +13,10 @@
 import { loadGlossary } from "../../core/loader.js";
 import { matchEntries, buildEntryRegex } from "../../core/matcher.js";
 import { expandDefinition } from "../../core/expander.js";
+import { loadConfig } from "../../core/config.js";
+import { loadSession } from "../../core/session.js";
+import { recordUsage } from "../../core/usage.js";
+import { startControlServer } from "../../server/control.js";
 import type { GlossaryEntry } from "../../core/types.js";
 
 type CompiledEntry = GlossaryEntry & { matcher: RegExp };
@@ -220,6 +224,13 @@ export default function openAgentGlossaryExtension(pi: any) {
       lastInjectedTerm = entry.term;
       updateStatus(ctx);
 
+      try {
+        const session = loadSession(ctx.cwd);
+        recordUsage("lookup", [entry.term], session.sessionId, ctx.cwd);
+      } catch {
+        // Usage tracking is best-effort.
+      }
+
       return { content: [{ type: "text", text: formatEntry(entry, ctx.cwd) }] };
     },
   });
@@ -233,6 +244,23 @@ export default function openAgentGlossaryExtension(pi: any) {
 
     const result = loadEntries(ctx.cwd);
     updateStatus(ctx);
+
+    // --- Optional UI autostart ---
+    try {
+      const cfg = loadConfig(ctx.cwd);
+      if (cfg.ui?.autostart) {
+        void startControlServer({
+          port: cfg.ui.port,
+          cwd: ctx.cwd,
+          serveUi: true,
+          open: cfg.ui.open !== false,
+        }).catch(() => {
+          /* best-effort: never block a session on the UI */
+        });
+      }
+    } catch {
+      // ignore config/UI startup errors
+    }
 
     if (result.error) {
       ctx.ui.notify(`Glossary load failed: ${result.error}`, "error");
@@ -325,6 +353,13 @@ export default function openAgentGlossaryExtension(pi: any) {
     injectionCount += newTerms.length;
     lastInjectedTerm = newTerms[newTerms.length - 1];
     updateStatus(ctx);
+
+    try {
+      const session = loadSession(ctx.cwd);
+      recordUsage("injection", newTerms, session.sessionId, ctx.cwd);
+    } catch {
+      // Usage tracking is best-effort.
+    }
 
     const definitions = newlyMatched.map((e) => formatEntry(e, ctx.cwd));
 

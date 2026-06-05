@@ -1,5 +1,24 @@
 import { startMcpServer } from "../mcp/server.js";
+import { startControlServer } from "../server/control.js";
 
-export function mcpServeCommand(): void {
+interface McpServeOptions {
+  ui?: boolean;
+  port?: string;
+  open?: boolean;
+}
+
+export function mcpServeCommand(options: McpServeOptions = {}): void {
+  if (options.ui) {
+    // Fire up the control server alongside the stdio MCP server.
+    void startControlServer({
+      port: options.port ? Number(options.port) : undefined,
+      serveUi: true,
+      open: Boolean(options.open),
+    }).catch((e) => {
+      process.stderr.write(
+        `Failed to start control server: ${e instanceof Error ? e.message : String(e)}\n`
+      );
+    });
+  }
   startMcpServer();
 }

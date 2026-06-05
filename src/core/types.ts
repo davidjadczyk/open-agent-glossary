@@ -10,7 +10,10 @@ export interface GlossaryEntry {
   pattern?: string;
   flags?: string;
   enabled?: boolean;
+  /** External reference / source-of-truth (e.g. wiki URL). Single string. */
   source?: string;
+  /** Semantic scope: projects/teams/bounded-contexts this term applies to. */
+  tags?: string[];
 }
 
 export type GlossaryMode = "merge" | "first" | "pin";
@@ -51,9 +54,23 @@ export interface GlossaryConfig {
    * Unusual but valid when you want only global + extraGlossaryPaths.
    */
   disableProjectGlossary?: boolean;
+
+  /** Local UI / control server settings. */
+  ui?: UiConfig;
+}
+
+export interface UiConfig {
+  /** Start the control server + UI automatically when a session starts. */
+  autostart?: boolean;
+  /** Control server port. Default: 7337. */
+  port?: number;
+  /** Open the browser when the UI starts. Default: true. */
+  open?: boolean;
 }
 
 export interface SessionState {
+  /** UUID, stable for the session lifetime. */
+  sessionId: string;
   loadedTerms: string[];
   lastUpdated: number;
   cwd: string;
@@ -88,4 +105,9 @@ export const DEFAULT_CONFIG: Required<GlossaryConfig> = {
   extraGlossaryPaths: [],
   disableGlobalGlossary: false,
   disableProjectGlossary: false,
+  ui: {
+    autostart: false,
+    port: 7337,
+    open: true,
+  },
 };

@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { loadGlossary, loadGlossaryByScope } from "../core/loader.js";
 import { addTerm, editTerm, removeTerm } from "../core/store.js";
+import { loadSession } from "../core/session.js";
+import { recordUsage } from "../core/usage.js";
 
 export function registerTools(server: McpServer): void {
   server.tool(
@@ -15,6 +17,12 @@ export function registerTools(server: McpServer): void {
       );
       if (!entry) {
         return { content: [{ type: "text", text: `Term '${term}' not found.` }] };
+      }
+      try {
+        const session = loadSession();
+        recordUsage("lookup", [entry.term], session.sessionId, session.cwd);
+      } catch {
+        // Usage tracking is best-effort; never block a lookup.
       }
       return {
         content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],

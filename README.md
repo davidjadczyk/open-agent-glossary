@@ -308,7 +308,62 @@ open-agent-glossary edit BFF --definition "Updated definition" --scope project -
 open-agent-glossary remove BFF --scope project --cwd .
 open-agent-glossary reset-session
 open-agent-glossary mcp-serve
+open-agent-glossary mcp-serve --ui --port 7337 --open
+open-agent-glossary ui --port 7337       # local web UI only
 ```
+
+---
+
+## Local UI
+
+A local web UI (Vite + React) gives you a dashboard, an entries manager, and
+usage charts — all served by a lightweight [hono](https://hono.dev) control
+server embedded in the core package. The server binds to **`127.0.0.1` only**
+and never transmits data anywhere.
+
+```bash
+# Start the UI (downloads the prebuilt UI package on demand if needed)
+open-agent-glossary ui
+
+# Or run the UI alongside the MCP server for an agent session
+open-agent-glossary mcp-serve --ui --open
+```
+
+Then open http://127.0.0.1:7337.
+
+- **Dashboard** — glossaries discovered on this computer (global + per-project),
+  total entries, and global/session lookup + injection counts.
+- **Entries** — searchable table with scope tabs (merged / global / project),
+  inline add/edit/delete, and smart suggestions (scope, aliases, format) when
+  adding a term.
+- **Usage** — bar charts of top terms by lookups and injections, toggleable
+  between global totals and the current session.
+
+The UI is shipped as a separate **prebuilt** package
+(`open-agent-glossary-ui`) via `optionalDependencies` — nothing is compiled on
+your machine. If it is not installed, the control server still serves the JSON
+API under `/api` and shows an install hint at `/`.
+
+Enable autostart so the UI boots with every agent session:
+
+```json
+{
+  "ui": { "autostart": true, "port": 7337, "open": true }
+}
+```
+
+### Global storage
+
+Per-user state lives under `~/.open-agent-glossary/`:
+
+| File | Purpose |
+|---|---|
+| `usages.json` | Usage tracking (per-term / per-session / global totals) |
+| `projects.json` | Registry of project roots seen by the tool (powers discovery) |
+
+The registry grows organically — every time the control server starts in a repo,
+that root is recorded so the "glossaries on this computer" view stays current.
+No full-disk scanning is ever performed.
 
 ---
 
@@ -322,7 +377,12 @@ Optional config file locations:
 
 ```json
 {
-  "sessionTtlMinutes": 30
+  "sessionTtlMinutes": 30,
+  "ui": {
+    "autostart": false,
+    "port": 7337,
+    "open": true
+  }
 }
 ```
 

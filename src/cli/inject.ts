@@ -3,6 +3,7 @@ import { matchEntries } from "../core/matcher.js";
 import { buildInjection } from "../core/injector.js";
 import { loadSession, markTermsLoaded } from "../core/session.js";
 import { loadConfig } from "../core/config.js";
+import { recordUsage, flushUsage } from "../core/usage.js";
 
 interface InjectOptions {
   prompt: string;
@@ -32,6 +33,10 @@ export function injectCommand(options: InjectOptions): void {
     if (injection.text) {
       process.stdout.write(injection.text + "\n");
       markTermsLoaded(session, injection.newTerms);
+      if (injection.newTerms.length > 0) {
+        recordUsage("injection", injection.newTerms, session.sessionId, cwd);
+        flushUsage();
+      }
     }
 
     process.exit(0);

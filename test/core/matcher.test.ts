@@ -54,3 +54,26 @@ describe("matcher", () => {
     expect(results).toHaveLength(0);
   });
 });
+
+import { testPattern } from "../../src/core/matcher.js";
+
+describe("testPattern", () => {
+  it("matches term/alias-derived regex", () => {
+    const r = testPattern({ term: "BFF", aliases: ["backend for frontend"], sample: "the BFF layer" });
+    expect(r.valid).toBe(true);
+    expect(r.matches).toHaveLength(1);
+    expect(r.matches[0].text).toBe("BFF");
+  });
+
+  it("matches an explicit pattern", () => {
+    const r = testPattern({ pattern: "v\\d+", flags: "gi", sample: "v1 and v22" });
+    expect(r.valid).toBe(true);
+    expect(r.matches.map((m) => m.text)).toEqual(["v1", "v22"]);
+  });
+
+  it("reports invalid regex without throwing", () => {
+    const r = testPattern({ pattern: "(", sample: "x" });
+    expect(r.valid).toBe(false);
+    expect(r.error).toBeTruthy();
+  });
+});
