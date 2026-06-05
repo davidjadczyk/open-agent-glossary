@@ -2,42 +2,82 @@
 
 Tool-agnostic glossary management for coding agents.
 
-Define domain terms once in a `glossary.json` or `glossary.jsonl` file and use them from:
+## What it is
+
+`open-agent-glossary` gives your agents a shared, authoritative vocabulary.
+You define project terms once in a glossary file, and the package makes those
+terms available across:
 
 - **Pi** via extension — lazy-loads definitions into the system prompt when terms are mentioned
 - **Claude Code** via hooks — injects matching definitions on every prompt
 - **Any MCP-capable agent** via stdio MCP server — explicit lookup, add, edit, remove tools
 - **CLI scripts** directly
 
-The goal is **fast setup** and **one shared source of truth** across every tool your team uses.
+## Why it exists
 
-```mermaid
-graph TD
-    subgraph Files [Shared Source of Truth]
-        A[(.agents/glossary.jsonl)] --- B[(~/.agents/glossary.json)]
-    end
+Project acronyms and domain language drift fast. Agents either guess, ask again,
+or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary
+terms from local files and making them available automatically or on demand,
+without bloating every turn's prompt.
 
-    subgraph Package [open-agent-glossary Core]
-        Engine[Loader & Matcher Engine]
-    end
+**Definitions are only injected when the current prompt references a matching glossary handle.**
 
-    Files -->|layered merge| Engine
+The goal is **fast setup**, **one shared source of truth**, and a **great local UI**
+for understanding what the glossary is doing.
 
-    subgraph Integrations [Agent Interfaces]
-        Pi[Pi Extension]
-        CC[Claude Code Hook]
-        Copilot[GitHub Copilot]
-        MCP[Any MCP Client]
-    end
+## Local UI
 
-    Engine -->|Lazy inject + Highlighter + Tool| Pi
-    Engine -->|Prompt Injector CLI| CC
-    Engine -->|Stdio Transport| MCP
-    MCP -->|Proactive Lookup| Copilot
+The local UI is the easiest way to understand what the glossary is doing and to
+manage entries without editing JSON by hand.
 
-    style Files fill:#f9f,stroke:#333,stroke-width:2px
-    style Package fill:#bbf,stroke:#333,stroke-width:2px
-    style Integrations fill:#dfd,stroke:#333,stroke-width:1px
+![open-agent-glossary UI overview](docs/ui-overview.png)
+
+### What the UI gives you
+
+- **Overview**
+  - glossary file discovery
+  - merge order / precedence visualization
+  - current session state
+  - top-level lookup and injection metrics
+
+- **Glossary**
+  - searchable entries browser
+  - list / split / cards layouts
+  - inline add / edit / delete
+  - alias and tag chip editors
+  - live regex / pattern tester against sample text
+  - provenance for where a term came from
+
+- **Usage**
+  - all-time vs current-session analytics
+  - activity timeline
+  - top terms by lookups or injections
+  - detection of “looked up often, rarely injected” terms
+
+- **Config**
+  - config resolution stack
+  - effective values with origin tracking
+  - inline edits written back to the active config file
+
+### Start it
+
+```bash
+open-agent-glossary init
+open-agent-glossary ui
+```
+
+Or:
+
+```bash
+open-agent-glossary ui --port 4319
+open-agent-glossary ui --no-open
+open-agent-glossary mcp-serve --ui --open
+```
+
+By default it runs at:
+
+```text
+http://127.0.0.1:7337
 ```
 
 ---
@@ -49,14 +89,6 @@ This project is built on top of the schema and concepts from [pi-glossary](https
 The goal here is to take the same idea further and make it **tool-agnostic**: one shared glossary file that works seamlessly across Pi, Claude Code, GitHub Copilot, and any MCP-capable agent. Your team maintains a single `.agents/glossary.jsonl` in the repo, and every agent — regardless of which tool a developer uses — picks it up automatically.
 
 Existing `glossary.json` files from `pi-glossary` are **100% schema-compatible** and can be dropped in without changes.
-
----
-
-## Why this package exists
-
-Project acronyms and domain language drift fast. Agents either guess, ask again, or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary terms from local files and making them available to agents automatically or on demand, without bloating every turn's prompt.
-
-**Definitions are only injected when the current prompt references a matching glossary handle.**
 
 ---
 
@@ -358,67 +390,11 @@ open-agent-glossary ui --port 7337
 
 ---
 
-## Local UI
+## Local UI — technical details
 
-The local UI is the easiest way to understand what the glossary is doing and to
-manage entries without editing JSON by hand.
-
-It is served by a lightweight [hono](https://hono.dev) control server embedded
+The UI is served by a lightweight [hono](https://hono.dev) control server embedded
 in the core package, binds to **`127.0.0.1` only**, and never transmits data
 anywhere.
-
-### Start it
-
-```bash
-# Start the local UI
-open-agent-glossary ui
-
-# Choose a custom port
-open-agent-glossary ui --port 4319
-
-# Do not auto-open the browser
-open-agent-glossary ui --no-open
-
-# Run the UI alongside the MCP server for an active agent session
-open-agent-glossary mcp-serve --ui --open
-```
-
-By default it runs at:
-
-```text
-http://127.0.0.1:7337
-```
-
-### What the UI shows
-
-![open-agent-glossary UI overview](docs/ui-overview.png)
-
-The redesigned UI includes four screens:
-
-- **Overview**
-  - glossary file discovery
-  - merge order / precedence visualization
-  - current session state
-  - top-level lookup and injection metrics
-
-- **Glossary**
-  - searchable entries browser
-  - list / split / cards layouts
-  - inline add / edit / delete
-  - alias and tag chip editors
-  - live regex / pattern tester against sample text
-  - provenance for where a term came from
-
-- **Usage**
-  - all-time vs current-session analytics
-  - activity timeline
-  - top terms by lookups or injections
-  - detection of “looked up often, rarely injected” terms
-
-- **Config**
-  - config resolution stack
-  - effective values with origin tracking
-  - inline edits written back to the active config file
 
 ### How it works
 
@@ -426,18 +402,6 @@ The redesigned UI includes four screens:
 - the browser talks to the local JSON API under `/api`
 - the UI uses the same glossary/config/session/usage logic as the CLI and MCP server
 - everything is local-only and file-backed
-
-### Config + glossary bootstrap
-
-If this is a fresh project, initialize everything first:
-
-```bash
-open-agent-glossary init
-open-agent-glossary ui
-```
-
-That gives you a default config plus an empty glossary file that you can start
-editing immediately in the UI.
 
 ### Autostart
 
