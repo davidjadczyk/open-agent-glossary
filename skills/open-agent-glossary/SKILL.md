@@ -10,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: open-agent-glossary
-  version: "1.1"
+  version: "1.2"
 ---
 
 # open-agent-glossary Skill
@@ -117,7 +117,8 @@ Glossaries are **layered and merged**. Later tiers win on the same `term`.
   "glossaryPin": "",
   "extraGlossaryPaths": [],
   "disableGlobalGlossary": false,
-  "disableProjectGlossary": false
+  "disableProjectGlossary": false,
+  "ui": { "autostart": false, "port": 7337, "open": true }
 }
 ```
 
@@ -129,6 +130,9 @@ Glossaries are **layered and merged**. Later tiers win on the same `term`.
 | `extraGlossaryPaths` | `[]` | Extra paths appended after all built-in tiers |
 | `disableGlobalGlossary` | `false` | Skip all global user-level tiers (useful in CI) |
 | `disableProjectGlossary` | `false` | Skip all project-level tiers |
+| `ui.autostart` | `false` | Start the local UI control server when a session starts |
+| `ui.port` | `7337` | Control server port |
+| `ui.open` | `true` | Open the browser when the UI starts |
 
 ### Glossary Modes
 
@@ -168,6 +172,75 @@ Use this in mono-repos where a specific shared glossary file must always be used
 | `/glossary reload` | Reload glossary files without restarting Pi |
 
 ---
+
+## Local UI
+
+A local web UI is served by an embedded hono control server bound to
+`127.0.0.1` only.
+
+| Command | Description |
+|---|---|
+| `open-agent-glossary ui` | Start the control server + UI and open the browser |
+| `open-agent-glossary ui --port 4319` | Start the UI on a custom port |
+| `open-agent-glossary ui --no-open` | Start the UI without opening a browser |
+| `open-agent-glossary mcp-serve --ui` | Run the UI alongside the MCP server |
+
+### UI screens
+
+- **Overview** — discovery, merge order, current session, top-level metrics
+- **Glossary** — searchable entries browser, add/edit/delete, pattern tester
+- **Usage** — timeline, top terms, all-time vs session analytics
+- **Config** — config resolution stack and effective values with inline editing
+
+Set `ui.autostart: true` in config to boot it automatically on session start.
+
+### Recommended bootstrap flow
+
+For a new project:
+
+```bash
+open-agent-glossary init
+open-agent-glossary ui
+```
+
+`init` creates:
+
+```text
+.open-agent-glossary/
+  config.json
+  glossary.json
+```
+
+So the user gets a default config plus an empty glossary immediately.
+
+Global state lives under `~/.open-agent-glossary/`:
+
+| File | Purpose |
+|---|---|
+| `usages.json` | Usage tracking (per-term / per-session / global totals) |
+| `projects.json` | Registry of project roots (powers "glossaries on this computer") |
+| `config.json` | Optional package-scoped global config |
+| `glossary.json` | Optional package-scoped global glossary |
+
+### UI troubleshooting
+
+- **Port already in use** — pass `--port <n>` or set `ui.port` in config.
+- **UI not available** — run `open-agent-glossary ui`; it serves the local browser UI from the package.
+- **UI did not autostart** — confirm `ui.autostart` is `true` in a config file the project resolves (see Config File Locations).
+
+---
+
+## Init command
+
+Use `open-agent-glossary init` to scaffold a default setup.
+
+| Command | Description |
+|---|---|
+| `open-agent-glossary init` | Create `.open-agent-glossary/config.json` and empty `.open-agent-glossary/glossary.json` |
+| `open-agent-glossary init --force` | Overwrite an existing scaffold |
+| `open-agent-glossary init --global` | Initialize `~/.open-agent-glossary/` instead of the project |
+
+This command is the recommended starting point for fresh repos.
 
 ## Troubleshooting
 

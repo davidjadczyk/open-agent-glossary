@@ -17,6 +17,8 @@
   "scripts": {
     "build": "tsup && tsup src/adapters/pi/index.ts --format esm --outDir src/adapters/pi/dist --no-splitting --target node20 --external @some-scope/pi-coding-agent",
     "dev": "tsup --watch",
+    "dev:ui": "npm --prefix ui run dev",
+    "build:ui": "npm --prefix ui run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -31,6 +33,9 @@
     "pi-package"
   ],
   "license": "MIT",
+  "workspaces": [
+    "ui"
+  ],
   "files": [
     "dist",
     "bin",
@@ -39,8 +44,13 @@
     "skills"
   ],
   "dependencies": {
+    "@hono/node-server": "^2.0.4",
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "hono": "^4.12.23"
+  },
+  "optionalDependencies": {
+    "open-agent-glossary-ui": "^0.1.2"
   },
   "pi": {
     "extensions": [
@@ -51,9 +61,9 @@
     ]
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.1.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^3.1.0"
   }
 }

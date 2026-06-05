@@ -2,42 +2,82 @@
 
 Tool-agnostic glossary management for coding agents.
 
-Define domain terms once in a `glossary.json` or `glossary.jsonl` file and use them from:
+## What it is
+
+`open-agent-glossary` gives your agents a shared, authoritative vocabulary.
+You define project terms once in a glossary file, and the package makes those
+terms available across:
 
 - **Pi** via extension — lazy-loads definitions into the system prompt when terms are mentioned
 - **Claude Code** via hooks — injects matching definitions on every prompt
 - **Any MCP-capable agent** via stdio MCP server — explicit lookup, add, edit, remove tools
 - **CLI scripts** directly
 
-The goal is **fast setup** and **one shared source of truth** across every tool your team uses.
+## Why it exists
 
-```mermaid
-graph TD
-    subgraph Files [Shared Source of Truth]
-        A[(.agents/glossary.jsonl)] --- B[(~/.agents/glossary.json)]
-    end
+Project acronyms and domain language drift fast. Agents either guess, ask again,
+or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary
+terms from local files and making them available automatically or on demand,
+without bloating every turn's prompt.
 
-    subgraph Package [open-agent-glossary Core]
-        Engine[Loader & Matcher Engine]
-    end
+**Definitions are only injected when the current prompt references a matching glossary handle.**
 
-    Files -->|layered merge| Engine
+The goal is **fast setup**, **one shared source of truth**, and a **great local UI**
+for understanding what the glossary is doing.
 
-    subgraph Integrations [Agent Interfaces]
-        Pi[Pi Extension]
-        CC[Claude Code Hook]
-        Copilot[GitHub Copilot]
-        MCP[Any MCP Client]
-    end
+## Local UI
 
-    Engine -->|Lazy inject + Highlighter + Tool| Pi
-    Engine -->|Prompt Injector CLI| CC
-    Engine -->|Stdio Transport| MCP
-    MCP -->|Proactive Lookup| Copilot
+The local UI is the easiest way to understand what the glossary is doing and to
+manage entries without editing JSON by hand.
 
-    style Files fill:#f9f,stroke:#333,stroke-width:2px
-    style Package fill:#bbf,stroke:#333,stroke-width:2px
-    style Integrations fill:#dfd,stroke:#333,stroke-width:1px
+![open-agent-glossary UI overview](docs/ui-overview.png)
+
+### What the UI gives you
+
+- **Overview**
+  - glossary file discovery
+  - merge order / precedence visualization
+  - current session state
+  - top-level lookup and injection metrics
+
+- **Glossary**
+  - searchable entries browser
+  - list / split / cards layouts
+  - inline add / edit / delete
+  - alias and tag chip editors
+  - live regex / pattern tester against sample text
+  - provenance for where a term came from
+
+- **Usage**
+  - all-time vs current-session analytics
+  - activity timeline
+  - top terms by lookups or injections
+  - detection of “looked up often, rarely injected” terms
+
+- **Config**
+  - config resolution stack
+  - effective values with origin tracking
+  - inline edits written back to the active config file
+
+### Start it
+
+```bash
+open-agent-glossary init
+open-agent-glossary ui
+```
+
+Or:
+
+```bash
+open-agent-glossary ui --port 4319
+open-agent-glossary ui --no-open
+open-agent-glossary mcp-serve --ui --open
+```
+
+By default it runs at:
+
+```text
+http://127.0.0.1:7337
 ```
 
 ---
@@ -49,14 +89,6 @@ This project is built on top of the schema and concepts from [pi-glossary](https
 The goal here is to take the same idea further and make it **tool-agnostic**: one shared glossary file that works seamlessly across Pi, Claude Code, GitHub Copilot, and any MCP-capable agent. Your team maintains a single `.agents/glossary.jsonl` in the repo, and every agent — regardless of which tool a developer uses — picks it up automatically.
 
 Existing `glossary.json` files from `pi-glossary` are **100% schema-compatible** and can be dropped in without changes.
-
----
-
-## Why this package exists
-
-Project acronyms and domain language drift fast. Agents either guess, ask again, or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary terms from local files and making them available to agents automatically or on demand, without bloating every turn's prompt.
-
-**Definitions are only injected when the current prompt references a matching glossary handle.**
 
 ---
 
@@ -72,12 +104,54 @@ npx open-agent-glossary --help
 
 ## 60-second setup
 
-### 1) Create a project glossary
+### 1) Initialize the project
 
-Put one of these in your repo:
+The fastest way to get started is now:
 
-- `.agents/glossary.json` / `.agents/glossary.jsonl` ← recommended (tool-agnostic)
+```bash
+open-agent-glossary init
+```
+
+This scaffolds:
+
+```text
+.open-agent-glossary/
+  config.json
+  glossary.json
+```
+
+- `config.json` contains sensible defaults
+- `glossary.json` starts as an empty glossary ready to edit in the UI or via CLI
+
+You can also initialize globally:
+
+```bash
+open-agent-glossary init --global
+```
+
+And overwrite existing files if needed:
+
+```bash
+open-agent-glossary init --force
+```
+
+### 2) Add glossary terms
+
+You can now either:
+
+- edit `.open-agent-glossary/glossary.json` directly
+- use the local UI: `open-agent-glossary ui`
+- or use the CLI:
+
+```bash
+open-agent-glossary add "BFF" "Backend For Frontend" --scope project --cwd .
+```
+
+You can still place glossaries in any supported path:
+
+- `.agents/glossary.json` / `.agents/glossary.jsonl` ← recommended for shared team glossaries
 - `.pi/glossary.json` / `.pi/glossary.jsonl` ← Pi-only
+- `.open-agent-glossary/glossary.json` ← package-scoped project glossary created by `init`
 
 Example:
 
@@ -103,7 +177,7 @@ Or JSONL (preferred for team repos — easier diffs, fewer merge conflicts):
 {"term":"DRY","definition":"Don't Repeat Yourself — reduce repetition of information across a codebase.","aliases":["dont repeat yourself"]}
 ```
 
-### 2) Pick your integration
+### 3) Pick your integration
 
 #### Pi
 
@@ -300,6 +374,8 @@ Why `.jsonl` for shared files?
 ## CLI Quick Reference
 
 ```bash
+open-agent-glossary init --cwd .
+open-agent-glossary init --global
 open-agent-glossary inject --prompt "what is BFF" --cwd .
 open-agent-glossary lookup BFF --cwd .
 open-agent-glossary list --cwd .
@@ -308,21 +384,91 @@ open-agent-glossary edit BFF --definition "Updated definition" --scope project -
 open-agent-glossary remove BFF --scope project --cwd .
 open-agent-glossary reset-session
 open-agent-glossary mcp-serve
+open-agent-glossary mcp-serve --ui --port 7337 --open
+open-agent-glossary ui --port 7337
 ```
+
+---
+
+## Local UI — technical details
+
+The UI is served by a lightweight [hono](https://hono.dev) control server embedded
+in the core package, binds to **`127.0.0.1` only**, and never transmits data
+anywhere.
+
+### How it works
+
+- `open-agent-glossary ui` starts the control server and serves the UI assets
+- the browser talks to the local JSON API under `/api`
+- the UI uses the same glossary/config/session/usage logic as the CLI and MCP server
+- everything is local-only and file-backed
+
+### Autostart
+
+Enable autostart so the UI boots with every agent session:
+
+```json
+{
+  "ui": { "autostart": true, "port": 7337, "open": true }
+}
+```
+
+### Packaging note
+
+The UI is shipped as a prebuilt package (`open-agent-glossary-ui`) via
+`optionalDependencies` — nothing is compiled on the user's machine. If it is
+not installed, the control server still serves the JSON API under `/api` and
+shows an install hint at `/`.
+
+### Global storage
+
+Per-user state lives under `~/.open-agent-glossary/`:
+
+| File | Purpose |
+|---|---|
+| `usages.json` | Usage tracking (per-term / per-session / global totals) |
+| `projects.json` | Registry of project roots seen by the tool (powers discovery) |
+| `config.json` | Optional package-scoped global config |
+| `glossary.json` | Optional package-scoped global glossary |
+
+The registry grows organically — every time the control server starts in a repo,
+that root is recorded so the “glossaries on this computer” view stays current.
+No full-disk scanning is ever performed.
 
 ---
 
 ## Config
 
-Optional config file locations:
+Config uses **first-found wins**.
 
+### Project-level (highest priority)
+
+- `.open-agent-glossary/config.json`
 - `.agents/open-agent-glossary/config.json`
-- `~/.pi/open-agent-glossary/config.json`
+- `.pi/open-agent-glossary/config.json`
+
+### Global user-level (fallback)
+
+- `~/.open-agent-glossary/config.json`
+- `~/.agents/open-agent-glossary/config.json`
 - `~/.config/open-agent-glossary/config.json`
+- `~/.pi/agent/extensions/open-agent-glossary/config.json`
+
+Example:
 
 ```json
 {
-  "sessionTtlMinutes": 30
+  "sessionTtlMinutes": 30,
+  "glossaryMode": "merge",
+  "glossaryPin": "",
+  "extraGlossaryPaths": [],
+  "disableGlobalGlossary": false,
+  "disableProjectGlossary": false,
+  "ui": {
+    "autostart": false,
+    "port": 7337,
+    "open": true
+  }
 }
 ```
 

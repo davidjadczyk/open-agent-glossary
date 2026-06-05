@@ -6,6 +6,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import type { SessionState, GlossaryConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 
@@ -44,6 +45,11 @@ export function loadSession(
     // Check cwd change (new project = new session)
     if (state.cwd !== currentCwd) {
       return freshSession(currentCwd);
+    }
+
+    // Backfill sessionId for sessions written before this field existed.
+    if (!state.sessionId) {
+      state.sessionId = randomUUID();
     }
 
     return state;
@@ -88,6 +94,7 @@ export function resetSession(cwd?: string): SessionState {
 
 function freshSession(cwd: string): SessionState {
   return {
+    sessionId: randomUUID(),
     loadedTerms: [],
     lastUpdated: Date.now(),
     cwd,
