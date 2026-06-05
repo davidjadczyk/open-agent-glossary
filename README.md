@@ -4,29 +4,25 @@ Tool-agnostic glossary management for coding agents.
 
 Define domain terms once in a `glossary.json` or `glossary.jsonl` file and use them from:
 
-- **Pi** via extension
-- **Claude Code** via hooks
-- **Any MCP-capable agent** via stdio MCP server
+- **Pi** via extension — lazy-loads definitions into the system prompt when terms are mentioned
+- **Claude Code** via hooks — injects matching definitions on every prompt
+- **Any MCP-capable agent** via stdio MCP server — explicit lookup, add, edit, remove tools
 - **CLI scripts** directly
 
-The goal is **fast setup** and **one shared source of truth**.
+The goal is **fast setup** and **one shared source of truth** across every tool your team uses.
 
 ```mermaid
 graph TD
-    %% Core glossary file source
     subgraph Files [Shared Source of Truth]
         A[(.agents/glossary.jsonl)] --- B[(~/.agents/glossary.json)]
     end
 
-    %% Package engine
     subgraph Package [open-agent-glossary Core]
         Engine[Loader & Matcher Engine]
     end
 
-    %% Connect files to engine
     Files -->|layered merge| Engine
 
-    %% Output integrations
     subgraph Integrations [Agent Interfaces]
         Pi[Pi Extension]
         CC[Claude Code Hook]
@@ -34,12 +30,11 @@ graph TD
         MCP[Any MCP Client]
     end
 
-    %% Connection paths
-    Engine -->|Highlighter / Inline Tool| Pi
+    Engine -->|Lazy inject + Highlighter + Tool| Pi
     Engine -->|Prompt Injector CLI| CC
     Engine -->|Stdio Transport| MCP
     MCP -->|Proactive Lookup| Copilot
-    
+
     style Files fill:#f9f,stroke:#333,stroke-width:2px
     style Package fill:#bbf,stroke:#333,stroke-width:2px
     style Integrations fill:#dfd,stroke:#333,stroke-width:1px
@@ -47,33 +42,29 @@ graph TD
 
 ---
 
+## Background
+
+This project is built on top of the schema and concepts from [pi-glossary](https://github.com/ruliana/pi-glossary) by [@ruliana](https://github.com/ruliana) — an excellent Pi extension for glossary injection.
+
+The goal here is to take the same idea further and make it **tool-agnostic**: one shared glossary file that works seamlessly across Pi, Claude Code, GitHub Copilot, and any MCP-capable agent. Your team maintains a single `.agents/glossary.jsonl` in the repo, and every agent — regardless of which tool a developer uses — picks it up automatically.
+
+Existing `glossary.json` files from `pi-glossary` are **100% schema-compatible** and can be dropped in without changes.
+
+---
+
 ## Why this package exists
 
-Project acronyms and domain language drift fast:
+Project acronyms and domain language drift fast. Agents either guess, ask again, or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary terms from local files and making them available to agents automatically or on demand, without bloating every turn's prompt.
 
-- `FOO`
-- `BAR`
-- `ABC`
-- `DEF`
-- `GHI`
-
-Agents either guess, ask again, or use the wrong meaning.
-
-`open-agent-glossary` fixes that by loading glossary terms from local files and making them available to agents automatically or on demand.
+**Definitions are only injected when the current prompt references a matching glossary handle.**
 
 ---
 
 ## Install
 
-### Global install
-
 ```bash
 npm install -g open-agent-glossary
-```
-
-### No install, use with npx
-
-```bash
+# or use directly with
 npx open-agent-glossary --help
 ```
 
@@ -85,38 +76,31 @@ npx open-agent-glossary --help
 
 Put one of these in your repo:
 
-- `.agents/glossary.json`
-- `.agents/glossary.jsonl`
-- `.pi/glossary.json`
-- `.pi/glossary.jsonl`
-
-Recommended for shared team glossaries:
-
-- use **`.agents/glossary.jsonl`** if many people edit it often
-- use **`.agents/glossary.json`** if you prefer simple JSON arrays
+- `.agents/glossary.json` / `.agents/glossary.jsonl` ← recommended (tool-agnostic)
+- `.pi/glossary.json` / `.pi/glossary.jsonl` ← Pi-only
 
 Example:
 
 ```json
 [
   {
-    "term": "PROJ.abc",
-    "definition": "PROJ.abc is an internal platform for agentic AI use cases.",
-    "aliases": ["PABC", "proj-abc", "Project ABC"]
+    "term": "BFF",
+    "definition": "Backend For Frontend — a dedicated backend service tailored to a specific frontend application.",
+    "aliases": ["backend for frontend", "bff-pattern"]
   },
   {
-    "term": "BFF",
-    "definition": "Backend For Frontend is an architecture pattern designed to build dedicated backends for frontends.",
-    "aliases": ["bff-pattern"]
+    "term": "DRY",
+    "definition": "Don't Repeat Yourself — reduce repetition of information across a codebase.",
+    "aliases": ["dont repeat yourself"]
   }
 ]
 ```
 
-Or JSONL:
+Or JSONL (preferred for team repos — easier diffs, fewer merge conflicts):
 
-```json
-{"term":"PROJ.abc","definition":"PROJ.abc is an internal platform for agentic AI use cases.","aliases":["PABC","proj-abc","Project ABC"]}
-{"term":"BFF","definition":"Backend For Frontend is an architecture pattern designed to build dedicated backends for frontends.","aliases":["bff-pattern"]}
+```jsonl
+{"term":"BFF","definition":"Backend For Frontend — a dedicated backend service tailored to a specific frontend application.","aliases":["backend for frontend"]}
+{"term":"DRY","definition":"Don't Repeat Yourself — reduce repetition of information across a codebase.","aliases":["dont repeat yourself"]}
 ```
 
 ### 2) Pick your integration
@@ -124,7 +108,7 @@ Or JSONL:
 #### Pi
 
 ```bash
-pi install git:github.com/username/open-agent-glossary --path src/adapters/pi
+pi install npm:open-agent-glossary
 ```
 
 #### Claude Code hook
@@ -144,7 +128,7 @@ Add to `.claude/settings.json`:
 }
 ```
 
-#### MCP
+#### MCP (GitHub Copilot, Cursor, any MCP client)
 
 Add to your MCP config:
 
@@ -163,88 +147,75 @@ That is enough to start.
 
 ---
 
-## Fast setup by environment
+## Pi — Extension Details
 
-## Pi
-
-Pi is the closest to a native glossary experience.
+Pi offers the closest to a native glossary experience because it runs as a **Pi Extension** bundled inside this package.
 
 ### Install
 
 ```bash
-pi install git:github.com/username/open-agent-glossary --path src/adapters/pi
+pi install npm:open-agent-glossary
 ```
 
-### What you get
+### How It Works
 
-- automatic glossary injection
-- matched term highlighting while typing
-- footer status for loaded glossary info
-- `glossary_lookup` tool
-- `/glossary`
-- `/glossary reload`
+1. On session start, the extension loads `~/.agents/glossary.json(.l)`, `~/.pi/agent/glossary.json(.l)`, `.agents/glossary.json(.l)`, and `.pi/glossary.json(.l)` from the current project.
+2. Project entries override global entries when they share the same `term`.
+3. Before each agent turn, the extension scans the user's prompt for matching glossary terms, aliases, or explicit regex patterns.
+4. If terms match, **only terms not already loaded in the current session** are injected into the system prompt.
+5. Loaded glossary handles stay visible in the footer status for the rest of the session as `Glossary: term, term`.
 
-### When glossary files change
+### What You Get
 
-Pi keeps glossary entries in memory for the current session.
+- Automatic lazy injection — definitions only appear when the prompt references a matching handle
+- Term highlighting while typing
+- Footer status showing loaded glossary handles
+- `glossary_lookup` tool the LLM can call explicitly
+- `/glossary` — show glossary load status
+- `/glossary reload` — reload glossary files without restarting Pi
 
-If your shared project glossary changes:
+### When Glossary Files Change
 
-- run `/glossary reload`, or
-- start a new Pi session
-
-This is the only integration that does **not** re-read files on every turn, because the Pi adapter maintains UI state and highlighting.
+Pi keeps glossary entries in memory for the session. Run `/glossary reload` after editing, or start a new session.
 
 ---
 
-## Claude Code hooks
-
-This is the fastest passive setup outside Pi.
-
-### Config
-
-```json
-{
-  "hooks": {
-    "UserPrompt": [
-      {
-        "matcher": ".*",
-        "command": "npx open-agent-glossary inject --prompt \"$USER_PROMPT\" --cwd \"$CWD\""
-      }
-    ]
-  }
-}
-```
-
-### Behavior
+## Claude Code Hooks
 
 On every prompt:
+1. Glossary files are loaded from disk.
+2. Terms are matched against the prompt.
+3. Matching definitions are returned to the agent as context.
 
-1. glossary files are loaded from disk
-2. terms are matched against the prompt
-3. matching definitions are returned to the agent as context
-
-### When glossary files change
-
-Nothing special required.
-
-Because the hook runs the CLI on every prompt, changes to a shared project glossary are picked up automatically on the **next prompt**.
+Changes to shared project glossaries are picked up automatically on the **next prompt** — no reload needed.
 
 ---
 
 ## MCP
 
-Use MCP when:
+Use MCP when your agent supports MCP but not prompt hooks, or when you want explicit tools for lookup/edit/list.
 
-- your agent supports MCP but not prompt hooks
-- you want explicit tools for lookup/edit/list
-- you want fresh file reads every tool call
+### Tools
 
-### Config
+| Tool | Description |
+|---|---|
+| `glossary_lookup` | Look up a term |
+| `glossary_list` | List all terms |
+| `glossary_add` | Add an entry |
+| `glossary_edit` | Edit an entry |
+| `glossary_remove` | Remove an entry |
+
+The MCP server re-reads glossary files on every tool call — no reload needed.
+
+---
+
+## GitHub Copilot
+
+Add to `.vscode/mcp.json`:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "glossary": {
       "command": "npx",
       "args": ["open-agent-glossary", "mcp-serve"]
@@ -253,114 +224,64 @@ Use MCP when:
 }
 ```
 
-### Tools exposed
+Add `.github/copilot-instructions.md` to make Copilot use it proactively:
 
-- `glossary_lookup`
-- `glossary_list`
-- `glossary_add`
-- `glossary_edit`
-- `glossary_remove`
+```markdown
+## Glossary
 
-### When glossary files change
+This project uses a shared glossary for domain-specific terms.
+When the user mentions an unfamiliar project term or acronym,
+use the `glossary_lookup` tool to get its authoritative definition.
+At the start of a conversation, use `glossary_list` to see all available terms.
+```
 
-Nothing special required.
-
-The MCP server re-loads glossary files on each tool invocation, so changes in a shared project glossary are visible on the **next lookup/list call**.
+See `hooks/github-copilot.md` for full hook and CLI setup.
 
 ---
 
-## Shared project glossaries that change often
+## Shared Project Glossaries
 
-This is a first-class use case.
-
-### Recommended setup
-
-Put the team glossary in the repo at:
+This is a first-class use case. Put the team glossary at:
 
 ```text
 .agents/glossary.jsonl
 ```
 
-Why `.jsonl`?
+Why `.jsonl` for shared files?
+- Easier line-based diffs
+- Fewer merge conflicts when multiple people add entries
+- Easy to append entries
+- Works with every integration (not just Pi)
 
-- easier line-based diffs
-- fewer merge conflicts
-- easy to append entries
-- better for frequently changing shared files
-
-### Current behavior by integration
+### Reload Behavior by Integration
 
 | Integration | Reload behavior |
 |---|---|
-| Pi | Loaded at session start; use `/glossary reload` after changes |
+| Pi | Loaded at session start; `/glossary reload` after changes |
 | Claude hook | Re-read on every prompt |
 | MCP | Re-read on every tool call |
-| CLI commands | Re-read on every command |
+| CLI | Re-read on every command |
 
-### Merge rules
+### Merge Order (later wins on same `term`)
 
-Glossaries are layered and merged in this order:
-
-1. `~/.pi/agent/glossary.json(.l)`
-2. `~/.agents/glossary.json(.l)`
-3. `.pi/glossary.json(.l)`
-4. `.agents/glossary.json(.l)`
-
-Later entries win on the same `term`.
-
-So the normal pattern is:
-
-- keep team/shared terms in `.agents/glossary.jsonl`
-- keep personal/global terms in `~/.agents/glossary.json`
-- let project terms override globals when needed
-
-### Important rule
-
-If both `.json` and `.jsonl` exist for the same path, loading fails with an error.
-
-Pick one format per location.
+1. `~/.pi/agent/glossary.json(.l)` — global Pi terms
+2. `~/.agents/glossary.json(.l)` — global cross-tool terms
+3. `.pi/glossary.json(.l)` — project Pi terms
+4. `.agents/glossary.json(.l)` — project cross-tool terms ← recommended
 
 ---
 
-## CLI quick reference
-
-```bash
-open-agent-glossary inject --prompt "what is BFF" --cwd .
-open-agent-glossary lookup BFF --cwd .
-open-agent-glossary list --cwd .
-open-agent-glossary add "BFF" "Definition here" --scope project --cwd .
-open-agent-glossary edit BFF --definition "Updated definition" --scope project --cwd .
-open-agent-glossary remove BFF --scope project --cwd .
-open-agent-glossary reset-session
-open-agent-glossary mcp-serve
-```
-
-### Commands
-
-| Command | Description |
-|---|---|
-| `inject --prompt <text>` | Match glossary terms and print injection text |
-| `lookup <term>` | Look up one term |
-| `list` | List loaded terms |
-| `add <term> <definition>` | Add an entry |
-| `edit <term>` | Edit an entry |
-| `remove <term>` | Remove an entry |
-| `reset-session` | Reset CLI hook session state |
-| `mcp-serve` | Start MCP server on stdio |
-
----
-
-## Glossary entry format
+## Glossary Entry Format
 
 ```json
 {
   "term": "BFF",
   "definition": "Backend For Frontend ...",
-  "aliases": ["BFF"],
-  "pattern": "BFF",
+  "aliases": ["backend for frontend"],
+  "pattern": "BFF|backend.?for.?frontend",
   "flags": "iu",
   "enabled": true,
-  "source": "shared-project-glossary"
+  "source": "project-glossary"
 }
 ```
 
@@ -369,10 +290,25 @@ open-agent-glossary mcp-serve
 | `term` | yes | canonical handle |
 | `definition` | yes | authoritative definition |
 | `aliases` | no | extra plain-text triggers |
-| `pattern` | no | explicit regex matcher |
+| `pattern` | no | explicit regex — overrides default matcher |
 | `flags` | no | regex flags, default `iu` |
 | `enabled` | no | set `false` to disable |
 | `source` | no | provenance label |
+
+---
+
+## CLI Quick Reference
+
+```bash
+open-agent-glossary inject --prompt "what is BFF" --cwd .
+open-agent-glossary lookup BFF --cwd .
+open-agent-glossary list --cwd .
+open-agent-glossary add "BFF" "Backend For Frontend" --scope project --cwd .
+open-agent-glossary edit BFF --definition "Updated definition" --scope project --cwd .
+open-agent-glossary remove BFF --scope project --cwd .
+open-agent-glossary reset-session
+open-agent-glossary mcp-serve
+```
 
 ---
 
@@ -384,32 +320,17 @@ Optional config file locations:
 - `~/.pi/open-agent-glossary/config.json`
 - `~/.config/open-agent-glossary/config.json`
 
-Example:
-
 ```json
 {
   "sessionTtlMinutes": 30
 }
 ```
 
-This currently affects CLI/session dedup behavior used by hook-style flows.
-
 ---
 
 ## Compatibility
 
-`open-agent-glossary` is schema-compatible with [`pi-glossary`](https://github.com/ruliana/pi-glossary).
-
-That means existing `glossary.json` files can be reused unchanged.
-
----
-
-## Repository integrations
-
-Additional integration notes live here:
-
-- `hooks/README.md`
-- `hooks/github-copilot.md`
+Schema-compatible with [`pi-glossary`](https://github.com/ruliana/pi-glossary). Existing `glossary.json` files drop in without changes.
 
 ---
 
