@@ -13,8 +13,44 @@ export interface GlossaryEntry {
   source?: string;
 }
 
+export type GlossaryMode = "merge" | "first" | "pin";
+
 export interface GlossaryConfig {
+  /** Session dedup TTL in minutes. Default: 30. */
   sessionTtlMinutes?: number;
+
+  /**
+   * How glossary files are resolved:
+   * - "merge" (default): all tiers loaded and merged, later tiers win on collision
+   * - "first": stop at the first file found across all tiers
+   * - "pin": only load the file at `glossaryPin`, skip all discovery
+   */
+  glossaryMode?: GlossaryMode;
+
+  /**
+   * Path to a single glossary file to use exclusively.
+   * Absolute or relative to cwd. Only used when glossaryMode is "pin".
+   */
+  glossaryPin?: string;
+
+  /**
+   * Additional glossary file paths appended after all built-in tiers.
+   * These always win over the built-in tiers (highest priority in merge mode).
+   * Absolute or relative to cwd.
+   */
+  extraGlossaryPaths?: string[];
+
+  /**
+   * Skip global user-level glossary tiers (~/.pi/agent, ~/.agents, ~/.open-agent-glossary).
+   * Useful in CI environments where personal global terms should not bleed in.
+   */
+  disableGlobalGlossary?: boolean;
+
+  /**
+   * Skip project-level glossary tiers (.pi/, .agents/, .open-agent-glossary/).
+   * Unusual but valid when you want only global + extraGlossaryPaths.
+   */
+  disableProjectGlossary?: boolean;
 }
 
 export interface SessionState {
@@ -47,4 +83,9 @@ export interface MatchResult {
 
 export const DEFAULT_CONFIG: Required<GlossaryConfig> = {
   sessionTtlMinutes: 30,
+  glossaryMode: "merge",
+  glossaryPin: "",
+  extraGlossaryPaths: [],
+  disableGlobalGlossary: false,
+  disableProjectGlossary: false,
 };

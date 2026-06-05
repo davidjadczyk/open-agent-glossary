@@ -4,19 +4,20 @@ description: >
   Use this skill when the user mentions a glossary term, project acronym, or domain-specific
   handle that may be defined in the project glossary. Automatically injects authoritative
   definitions into context when terms are matched. Also triggers on: "what is <term>",
-  "look up <term>", "glossary lookup", "what does <acronym> mean", or when an unfamiliar
-  project-specific word appears in the prompt.
+  "look up <term>", "glossary lookup", "what does <acronym> mean", when an unfamiliar
+  project-specific word appears in the prompt, or when the user needs help setting up,
+  configuring, or debugging the open-agent-glossary package.
 license: MIT
 metadata:
   author: open-agent-glossary
-  version: "1.0"
+  version: "1.1"
 ---
 
 # open-agent-glossary Skill
 
 This skill activates when a glossary term, project acronym, or domain-specific handle is
-referenced in the user's prompt. It injects authoritative definitions from the project
-glossary so you can answer accurately without guessing.
+referenced in the user's prompt, or when the user needs help configuring or troubleshooting
+the `open-agent-glossary` package.
 
 ## Behavior
 
@@ -26,6 +27,8 @@ glossary so you can answer accurately without guessing.
   known terms into context.
 - Never guess what an acronym means. If unsure, look it up.
 - Prefer the glossary definition over your own training knowledge when terms conflict.
+
+---
 
 ## Glossary Entry Format
 
@@ -51,14 +54,101 @@ glossary so you can answer accurately without guessing.
 | `enabled` | no | set `false` to disable |
 | `source` | no | provenance label (e.g. `"project-glossary"`) |
 
+---
+
+## Config File Locations
+
+Config uses **first-found wins**. Project-level config always beats global.
+
+### Project-level (highest priority, checked first):
+
+| Path | Notes |
+|---|---|
+| `.open-agent-glossary/config.json` | pkg-scoped project config |
+| `.agents/open-agent-glossary/config.json` | tool-agnostic project config (recommended for teams) |
+| `.pi/open-agent-glossary/config.json` | Pi project-local config |
+
+### Global user-level (fallback):
+
+| Path | Notes |
+|---|---|
+| `~/.open-agent-glossary/config.json` | pkg-scoped global config |
+| `~/.agents/open-agent-glossary/config.json` | tool-agnostic global config |
+| `~/.config/open-agent-glossary/config.json` | XDG standard |
+| `~/.pi/agent/extensions/open-agent-glossary/config.json` | Pi global (Pi users) |
+
+### Recommended team setup:
+
+```
+repo/
+  .agents/
+    glossary.jsonl                          ← shared team glossary (commit this)
+    open-agent-glossary/
+      config.json                           ← shared config (commit this)
+~/.agents/
+  glossary.json                             ← personal global terms (never commit)
+```
+
+---
+
 ## Glossary File Locations
 
-Glossaries are layered and merged. Later tiers win on the same `term`:
+Glossaries are **layered and merged**. Later tiers win on the same `term`.
 
-1. `~/.pi/agent/glossary.json(.l)` — global user terms
-2. `~/.agents/glossary.json(.l)` — global cross-tool terms
-3. `.pi/glossary.json(.l)` — project terms (Pi-scoped)
-4. `.agents/glossary.json(.l)` — project terms (tool-agnostic)
+| Priority | Path | Tier |
+|---|---|---|
+| 1 (lowest) | `~/.pi/agent/glossary.json(.l)` | Global Pi |
+| 2 | `~/.agents/glossary.json(.l)` | Global tool-agnostic |
+| 3 | `~/.open-agent-glossary/glossary.json(.l)` | Global pkg-scoped |
+| 4 | `.pi/glossary.json(.l)` | Project Pi |
+| 5 | `.agents/glossary.json(.l)` | Project tool-agnostic ← recommended for teams |
+| 6 | `.open-agent-glossary/glossary.json(.l)` | Project pkg-scoped |
+| 7 (highest) | `config.extraGlossaryPaths[]` | User-defined extras |
+| — | `config.glossaryPin` | Overrides all tiers when mode is `pin` |
+
+---
+
+## Config Schema
+
+```json
+{
+  "sessionTtlMinutes": 30,
+  "glossaryMode": "merge",
+  "glossaryPin": "",
+  "extraGlossaryPaths": [],
+  "disableGlobalGlossary": false,
+  "disableProjectGlossary": false
+}
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `sessionTtlMinutes` | `30` | How long (minutes) before session state resets |
+| `glossaryMode` | `"merge"` | `"merge"` / `"first"` / `"pin"` — see below |
+| `glossaryPin` | `""` | Path to a single file; only used when mode is `"pin"` |
+| `extraGlossaryPaths` | `[]` | Extra paths appended after all built-in tiers |
+| `disableGlobalGlossary` | `false` | Skip all global user-level tiers (useful in CI) |
+| `disableProjectGlossary` | `false` | Skip all project-level tiers |
+
+### Glossary Modes
+
+**`merge`** (default) — all tiers are loaded and merged. Later tiers win on collision.
+Use this for teams where each developer has personal global terms and the project has shared ones.
+
+**`first`** — stops at the first glossary file found. Nothing else is loaded.
+Use this in CI or scripts where personal global terms must not bleed in.
+
+**`pin`** — loads only the file at `glossaryPin`. All discovery is skipped.
+Use this in mono-repos where a specific shared glossary file must always be used.
+
+```json
+{
+  "glossaryMode": "pin",
+  "glossaryPin": "../../shared/glossary.jsonl"
+}
+```
+
+---
 
 ## Available Tools (via MCP)
 
@@ -74,12 +164,58 @@ Glossaries are layered and merged. Later tiers win on the same `term`:
 
 | Command | Description |
 |---|---|
-| `/glossary` | Show loaded glossary status |
+| `/glossary` | Show loaded glossary status and sources |
 | `/glossary reload` | Reload glossary files without restarting Pi |
 
-## When to Trigger
+---
 
-- User asks "what is [TERM]?" or "what does [ACRONYM] stand for?"
-- An unfamiliar project-specific abbreviation appears in the prompt
-- Agent needs to reference a domain-specific concept that may have a project-local meaning
-- User asks to add, update, or remove a glossary entry
+## Troubleshooting
+
+### Terms are not being injected
+
+1. Check that a glossary file exists at one of the tier paths above.
+2. Run `open-agent-glossary list --cwd .` in your project directory to see what is loaded.
+3. If nothing loads, run `open-agent-glossary inject --prompt "test" --cwd .` and check stderr for errors.
+4. Verify the file is valid JSON / JSONL with correct `term` and `definition` fields.
+
+### Wrong definition is being used (collision)
+
+Later tiers win. Check your tier priority:
+- A `.agents/glossary.jsonl` entry will override a `.pi/glossary.json` entry with the same term.
+- An `extraGlossaryPaths` entry will override all built-in tiers.
+- If using `pin` mode, only the pinned file is loaded — all others are ignored.
+
+### Config file is not being picked up
+
+Run `open-agent-glossary list --cwd .` and check which config was loaded.
+Ensure your config file is at one of the expected paths and contains valid JSON.
+Project-level paths are always checked before global paths.
+
+### Personal terms appearing in CI
+
+Set `disableGlobalGlossary: true` in the project config at `.agents/open-agent-glossary/config.json`:
+
+```json
+{
+  "disableGlobalGlossary": true
+}
+```
+
+### Pi: glossary not updating after file change
+
+Run `/glossary reload` in your Pi session. Pi loads glossary entries into memory at session start — unlike Claude Code hooks and MCP, it does not re-read files on every turn.
+
+### Both `.json` and `.jsonl` exist at the same path
+
+This is an error. Remove one. You cannot have both `glossary.json` and `glossary.jsonl` at the same location.
+
+### `glossaryMode: pin` throws "no glossaryPin path is set"
+
+You set `glossaryMode` to `"pin"` but forgot to also set `glossaryPin`. Add the path:
+
+```json
+{
+  "glossaryMode": "pin",
+  "glossaryPin": "./path/to/your/glossary.json"
+}
+```
