@@ -374,7 +374,7 @@ Why `.jsonl` for shared files?
 
 ## Release / publish
 
-You can publish both packages and create a GitHub release with one command:
+Run the release script:
 
 ```bash
 npm run release -- patch
@@ -383,17 +383,18 @@ npm run release -- patch
 
 This script will:
 
-1. verify clean git state + npm auth
+1. verify clean git state
 2. run tests/typecheck/build
 3. bump versions in root + `ui/`
 4. create commit + git tag (`vX.Y.Z`)
-5. publish `open-agent-glossary-ui` first, then `open-agent-glossary`
-6. push commit + tags
-7. create GitHub release notes (`gh release create --generate-notes`)
+5. push commit + tags
+6. create GitHub release notes (`gh release create --generate-notes`)
+
+Package publishing is handled by GitHub Actions Trusted Publishing (OIDC) on tag push via `.github/workflows/publish.yml`.
 
 Requirements:
 
-- `npm login` already done
+- npm Trusted Publisher configured for this repo/workflow
 - `gh` CLI installed and authenticated (for automatic GitHub release creation)
 
 ## CLI Quick Reference

@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = process.cwd();
-const uiDir = resolve(root, "ui");
 const bump = process.argv[2];
 
 const allowed = new Set(["patch", "minor", "major", "prerelease", "prepatch", "preminor", "premajor"]);
@@ -31,8 +30,12 @@ try {
     process.exit(1);
   }
 
-  // Verify tools
-  run("npm whoami");
+  // Optional sanity check (no longer required for publish)
+  try {
+    run("npm whoami");
+  } catch {
+    console.warn("⚠️  npm whoami failed locally. Continuing because publishing is done by GitHub Actions Trusted Publisher.");
+  }
 
   // Quality gates
   run("npm test");
@@ -50,11 +53,7 @@ try {
   run(`git commit -m \"chore(release): v${next}\"`);
   run(`git tag v${next}`);
 
-  // Publish (UI first, then core)
-  run("npm publish --access public", { cwd: uiDir });
-  run("npm publish --access public", { cwd: root });
-
-  // Push commit + tag
+  // Push commit + tag (publishing is handled in GitHub Actions via Trusted Publisher)
   run("git push");
   run("git push --tags");
 
