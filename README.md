@@ -30,7 +30,7 @@ for understanding what the glossary is doing.
 The local UI is the easiest way to understand what the glossary is doing and to
 manage entries without editing JSON by hand.
 
-![open-agent-glossary UI overview](docs/ui-overview.png)
+![open-agent-glossary UI overview](https://raw.githubusercontent.com/davidjadczyk/open-agent-glossary/main/docs/ui-overview.png)
 
 ### What the UI gives you
 
@@ -71,7 +71,8 @@ Or:
 ```bash
 open-agent-glossary ui --port 4319
 open-agent-glossary ui --no-open
-open-agent-glossary mcp-serve --ui --open
+open-agent-glossary mcp-serve --open   # UI starts by default
+open-agent-glossary mcp-serve --no-ui  # disable UI auto-start
 ```
 
 By default it runs at:
@@ -371,6 +372,30 @@ Why `.jsonl` for shared files?
 
 ---
 
+## Release / publish
+
+You can publish both packages and create a GitHub release with one command:
+
+```bash
+npm run release -- patch
+# or: minor / major
+```
+
+This script will:
+
+1. verify clean git state + npm auth
+2. run tests/typecheck/build
+3. bump versions in root + `ui/`
+4. create commit + git tag (`vX.Y.Z`)
+5. publish `open-agent-glossary-ui` first, then `open-agent-glossary`
+6. push commit + tags
+7. create GitHub release notes (`gh release create --generate-notes`)
+
+Requirements:
+
+- `npm login` already done
+- `gh` CLI installed and authenticated (for automatic GitHub release creation)
+
 ## CLI Quick Reference
 
 ```bash
@@ -384,7 +409,8 @@ open-agent-glossary edit BFF --definition "Updated definition" --scope project -
 open-agent-glossary remove BFF --scope project --cwd .
 open-agent-glossary reset-session
 open-agent-glossary mcp-serve
-open-agent-glossary mcp-serve --ui --port 7337 --open
+open-agent-glossary mcp-serve --port 7337 --open
+open-agent-glossary mcp-serve --no-ui
 open-agent-glossary ui --port 7337
 ```
 

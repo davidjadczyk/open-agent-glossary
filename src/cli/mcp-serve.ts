@@ -8,7 +8,9 @@ interface McpServeOptions {
 }
 
 export function mcpServeCommand(options: McpServeOptions = {}): void {
-  if (options.ui) {
+  const startUi = options.ui !== false; // default ON
+
+  if (startUi) {
     // Fire up the control server alongside the stdio MCP server.
     void startControlServer({
       port: options.port ? Number(options.port) : undefined,

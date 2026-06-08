@@ -75,9 +75,9 @@ program
 program
   .command("mcp-serve")
   .description("Start MCP server on stdio")
-  .option("--ui", "Also start the local UI control server")
-  .option("--port <n>", "Control server port (with --ui)")
-  .option("--open", "Open the browser (with --ui)")
+  .option("--no-ui", "Disable local UI control server on MCP start (default: enabled)")
+  .option("--port <n>", "Control server port (when UI is enabled)")
+  .option("--open", "Open the browser (when UI is enabled)")
   .action(mcpServeCommand);
 
 program

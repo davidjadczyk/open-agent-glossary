@@ -183,7 +183,8 @@ A local web UI is served by an embedded hono control server bound to
 | `open-agent-glossary ui` | Start the control server + UI and open the browser |
 | `open-agent-glossary ui --port 4319` | Start the UI on a custom port |
 | `open-agent-glossary ui --no-open` | Start the UI without opening a browser |
-| `open-agent-glossary mcp-serve --ui` | Run the UI alongside the MCP server |
+| `open-agent-glossary mcp-serve` | Run MCP + UI together (UI default: enabled) |
+| `open-agent-glossary mcp-serve --no-ui` | Run MCP only, without UI auto-start |
 
 ### UI screens
 
