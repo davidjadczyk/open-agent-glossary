@@ -31,10 +31,10 @@ jobs:
 
       - name: Verify + build
         run: |
-          npm test
           npm run typecheck
           npm run build
           npm --prefix ui run build
+          npm test
 
       - name: Publish UI package
         run: npm --prefix ui publish --access public --provenance
