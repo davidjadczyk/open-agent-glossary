@@ -38,7 +38,11 @@ jobs:
 
       - name: Publish UI package
         working-directory: ui
+        env:
+          NODE_AUTH_TOKEN: ""
         run: npm publish --access public --provenance
 
       - name: Publish core package
+        env:
+          NODE_AUTH_TOKEN: ""
         run: npm publish --access public --provenance
