@@ -1,6 +1,6 @@
 {
   "name": "open-agent-glossary-ui",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Local web UI for open-agent-glossary",
   "type": "module",
   "license": "MIT",
