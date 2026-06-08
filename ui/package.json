@@ -4,6 +4,10 @@
   "description": "Local web UI for open-agent-glossary",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidjadczyk/open-agent-glossary"
+  },
   "files": [
     "dist"
   ],
