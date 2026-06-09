@@ -2,35 +2,88 @@
 
 Tool-agnostic glossary management for coding agents.
 
-## What it is
+## Quick start
 
-`open-agent-glossary` gives your agents a shared, authoritative vocabulary.
-You define project terms once in a glossary file, and the package makes those
-terms available across:
+### Install
 
-- **Pi** via extension — lazy-loads definitions into the system prompt when terms are mentioned
-- **Claude Code** via hooks — injects matching definitions on every prompt
-- **Any MCP-capable agent** via stdio MCP server — explicit lookup, add, edit, remove tools
-- **CLI scripts** directly
+```bash
+npm install -g open-agent-glossary
+# or use directly with
+npx open-agent-glossary --help
+```
 
-## Why it exists
+### Initialize and open the UI
 
-Project acronyms and domain language drift fast. Agents either guess, ask again,
-or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary
-terms from local files and making them available automatically or on demand,
-without bloating every turn's prompt.
+```bash
+open-agent-glossary init
+open-agent-glossary ui
+```
 
-**Definitions are only injected when the current prompt references a matching glossary handle.**
+By default the UI runs at:
 
-The goal is **fast setup**, **one shared source of truth**, and a **great local UI**
-for understanding what the glossary is doing.
+```text
+http://127.0.0.1:7337
+```
+
+### Add a term
+
+```bash
+open-agent-glossary add "BFF" "Backend For Frontend" --scope project --cwd .
+```
+
+Or edit the generated file directly:
+
+```text
+.open-agent-glossary/glossary.json
+```
+
+### Connect an agent
+
+#### Pi
+
+```bash
+pi install npm:open-agent-glossary
+```
+
+#### Claude Code
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "UserPrompt": [
+      {
+        "matcher": ".*",
+        "command": "npx open-agent-glossary inject --prompt \"$USER_PROMPT\" --cwd \"$CWD\""
+      }
+    ]
+  }
+}
+```
+
+#### MCP (GitHub Copilot, Cursor, any MCP client)
+
+Add to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "glossary": {
+      "command": "npx",
+      "args": ["open-agent-glossary", "mcp-serve"]
+    }
+  }
+}
+```
+
+If you just want to try it locally, `init` + `ui` is enough.
 
 ## Local UI
 
-The local UI is the easiest way to understand what the glossary is doing and to
-manage entries without editing JSON by hand.
+The UI is the fastest way to understand merge order, inspect loaded terms, and edit entries without hand-editing JSON.
 
-![open-agent-glossary UI overview](https://raw.githubusercontent.com/davidjadczyk/open-agent-glossary/main/docs/ui-overview.png)
+![open-agent-glossary UI overview](https://raw.githubusercontent.com/davidjadczyk/open-agent-glossary/main/assets/ui-overview.png)
 
 ### What the UI gives you
 
@@ -59,14 +112,7 @@ manage entries without editing JSON by hand.
   - effective values with origin tracking
   - inline edits written back to the active config file
 
-### Start it
-
-```bash
-open-agent-glossary init
-open-agent-glossary ui
-```
-
-Or:
+### UI commands
 
 ```bash
 open-agent-glossary ui --port 4319
@@ -75,13 +121,30 @@ open-agent-glossary mcp-serve --open   # UI starts by default
 open-agent-glossary mcp-serve --no-ui  # disable UI auto-start
 ```
 
-By default it runs at:
-
-```text
-http://127.0.0.1:7337
-```
-
 ---
+
+## What it is
+
+`open-agent-glossary` gives your agents a shared, authoritative vocabulary.
+You define project terms once in a glossary file, and the package makes those
+terms available across:
+
+- **Pi** via extension — lazy-loads definitions into the system prompt when terms are mentioned
+- **Claude Code** via hooks — injects matching definitions on every prompt
+- **Any MCP-capable agent** via stdio MCP server — explicit lookup, add, edit, remove tools
+- **CLI scripts** directly
+
+## Why it exists
+
+Project acronyms and domain language drift fast. Agents either guess, ask again,
+or use the wrong meaning. `open-agent-glossary` fixes that by loading glossary
+terms from local files and making them available automatically or on demand,
+without bloating every turn's prompt.
+
+**Definitions are only injected when the current prompt references a matching glossary handle.**
+
+The goal is **fast setup**, **one shared source of truth**, and a **great local UI**
+for understanding what the glossary is doing.
 
 ## Background
 
@@ -90,16 +153,6 @@ This project is built on top of the schema and concepts from [pi-glossary](https
 The goal here is to take the same idea further and make it **tool-agnostic**: one shared glossary file that works seamlessly across Pi, Claude Code, GitHub Copilot, and any MCP-capable agent. Your team maintains a single `.agents/glossary.jsonl` in the repo, and every agent — regardless of which tool a developer uses — picks it up automatically.
 
 Existing `glossary.json` files from `pi-glossary` are **100% schema-compatible** and can be dropped in without changes.
-
----
-
-## Install
-
-```bash
-npm install -g open-agent-glossary
-# or use directly with
-npx open-agent-glossary --help
-```
 
 ---
 
